@@ -5,6 +5,12 @@
 /*                             OCULUS ENGINE                             */
 /*                        https://oculusengine.org                        */
 /**************************************************************************/
+/* Copyright (c) 2025-present Oculus Engine contributors (see AUTHORS.md). */
+/*                                                                        */
+/* This file was originally derived from Godot Engine:                   */
+/* https://github.com/godotengine/godot/tree/63227bbc8ae5300319f14f8253c8158b846f355b */
+/*                                                                        */
+/* Original Godot Engine copyright:                                      */
 /* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
 /* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
 /*                                                                        */
@@ -27,6 +33,7 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+
 
 #include "editor_node.h"
 
