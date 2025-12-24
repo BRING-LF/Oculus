@@ -5,5 +5,5 @@ minor = 6
 patch = 0
 status = "beta"
 module_config = ""
-website = "https://godotengine.org"
+website = "https://oculusengine.org"
 docs = "latest"
