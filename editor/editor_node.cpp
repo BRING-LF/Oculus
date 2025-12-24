@@ -338,73 +338,6 @@ void EditorNode::_update_from_settings() {
 #endif // DEBUG_ENABLED
 }
 
-void EditorNode::_gdextensions_reloaded() {
-	// In case the developer is inspecting an object that will be changed by the reload.
-	InspectorDock::get_inspector_singleton()->update_tree();
-
-	// Reload script editor to revalidate GDScript if classes are added or removed.
-	ScriptEditor::get_singleton()->reload_scripts(true);
-
-	// Regenerate documentation without using script documentation cache since that would
-	// revert doc changes during this session.
-	EditorHelp::generate_doc(true, false);
-}
-
-void EditorNode::_update_translations() {
-	Ref<TranslationDomain> main = TranslationServer::get_singleton()->get_main_domain();
-
-	TranslationServer::get_singleton()->load_project_translations(main);
-
-	if (main->is_enabled()) {
-		// Check for the exact locale.
-		if (main->has_translation_for_locale(main->get_locale_override(), true)) {
-			// The set of translation resources for the current locale changed.
-			const HashSet<Ref<Translation>> translations = main->find_translations(main->get_locale_override(), false);
-			if (translations != tracked_translations) {
-				_translation_resources_changed();
-			}
-		} else {
-			// Translations for the current preview locale is removed.
-			main->set_enabled(false);
-			main->set_locale_override(String());
-			_translation_resources_changed();
-		}
-	}
-}
-
-void EditorNode::_translation_resources_changed() {
-	for (const Ref<Translation> &E : tracked_translations) {
-		E->disconnect_changed(callable_mp(this, &EditorNode::_queue_translation_notification));
-	}
-	tracked_translations.clear();
-
-	const Ref<TranslationDomain> main = TranslationServer::get_singleton()->get_main_domain();
-	if (main->is_enabled()) {
-		const HashSet<Ref<Translation>> translations = main->find_translations(main->get_locale_override(), false);
-		tracked_translations.reserve(translations.size());
-		for (const Ref<Translation> &translation : translations) {
-			translation->connect_changed(callable_mp(this, &EditorNode::_queue_translation_notification));
-			tracked_translations.insert(translation);
-		}
-	}
-
-	_queue_translation_notification();
-	emit_signal(SNAME("preview_locale_changed"));
-}
-
-void EditorNode::_queue_translation_notification() {
-	if (pending_translation_notification) {
-		return;
-	}
-	pending_translation_notification = true;
-	callable_mp(this, &EditorNode::_propagate_translation_notification).call_deferred();
-}
-
-void EditorNode::_propagate_translation_notification() {
-	pending_translation_notification = false;
-	scene_root->propagate_notification(NOTIFICATION_TRANSLATION_CHANGED);
-}
-
 void EditorNode::_update_theme(bool p_skip_creation) {
 	if (!p_skip_creation) {
 		theme = EditorThemeManager::generate_theme(theme);
@@ -1306,48 +1239,6 @@ void EditorNode::_reload_modified_scenes() {
 
 void EditorNode::_reload_project_settings() {
 	ProjectSettings::get_singleton()->setup(ProjectSettings::get_singleton()->get_resource_path(), String(), true, true);
-}
-
-void EditorNode::_vp_resized() {
-}
-
-void EditorNode::_viewport_resized() {
-	Window *w = get_window();
-	if (w) {
-		was_window_windowed_last = w->get_mode() == Window::MODE_WINDOWED;
-	}
-}
-
-void EditorNode::_titlebar_resized() {
-	DisplayServer::get_singleton()->window_set_window_buttons_offset(Vector2i(title_bar->get_global_position().y + title_bar->get_size().y / 2, title_bar->get_global_position().y + title_bar->get_size().y / 2), DisplayServer::MAIN_WINDOW_ID);
-	const Vector3i &margin = DisplayServer::get_singleton()->window_get_safe_title_margins(DisplayServer::MAIN_WINDOW_ID);
-	if (left_menu_spacer) {
-		int w = (gui_base->is_layout_rtl()) ? margin.y : margin.x;
-		left_menu_spacer->set_custom_minimum_size(Size2(w, 0));
-	}
-	if (right_menu_spacer) {
-		int w = (gui_base->is_layout_rtl()) ? margin.x : margin.y;
-		right_menu_spacer->set_custom_minimum_size(Size2(w, 0));
-	}
-	if (title_bar) {
-		title_bar->set_custom_minimum_size(Size2(0, margin.z - title_bar->get_global_position().y));
-	}
-}
-
-void EditorNode::_update_undo_redo_allowed() {
-	EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
-	file_menu->set_item_disabled(file_menu->get_item_index(SCENE_UNDO), !undo_redo->has_undo());
-	file_menu->set_item_disabled(file_menu->get_item_index(SCENE_REDO), !undo_redo->has_redo());
-}
-
-void EditorNode::_node_renamed() {
-	if (InspectorDock::get_inspector_singleton()) {
-		InspectorDock::get_inspector_singleton()->update_tree();
-	}
-}
-
-void EditorNode::_open_command_palette() {
-	command_palette->open_popup();
 }
 
 Error EditorNode::load_resource(const String &p_resource, bool p_ignore_broken_deps) {
