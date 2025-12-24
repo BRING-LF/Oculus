@@ -178,7 +178,11 @@ void TreeItem::_change_tree(Tree *p_tree) {
 	if (tree) {
 		tree->queue_accessibility_update();
 		tree->queue_redraw();
-		cells.resize(tree->columns.size());
+		int column_count = tree->columns.size();
+		if (column_count == 0) {
+			column_count = 1; // Default to 1 column if tree has no columns
+		}
+		cells.resize(column_count);
 	}
 }
 
@@ -1540,6 +1544,9 @@ Color TreeItem::get_custom_color(int p_column) const {
 }
 
 void TreeItem::clear_custom_color(int p_column) {
+	if (cells.size() == 0) {
+		return;
+	}
 	ERR_FAIL_INDEX(p_column, cells.size());
 	cells.write[p_column].custom_color = false;
 	cells.write[p_column].color = Color();

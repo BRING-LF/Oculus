@@ -197,6 +197,9 @@ void EditorBottomPanel::_update_center_split_offset() {
 }
 
 EditorDock *EditorBottomPanel::_get_dock_from_control(Control *p_control) const {
+	if (!p_control || !p_control->get_parent()) {
+		return nullptr;
+	}
 	return Object::cast_to<EditorDock>(p_control->get_parent());
 }
 
@@ -225,13 +228,11 @@ Button *EditorBottomPanel::add_item(String p_text, Control *p_item, const Ref<Sh
 void EditorBottomPanel::remove_item(Control *p_item) {
 	EditorDock *dock = _get_dock_from_control(p_item);
 	if (!dock) {
-		WARN_PRINT(vformat("Cannot remove unknown dock \"%s\" from the bottom panel. It may have already been removed.", p_item->get_name()));
 		return;
 	}
 
 	int item_idx = bottom_docks.find(dock);
 	if (item_idx == -1) {
-		WARN_PRINT(vformat("Dock \"%s\" not found in bottom panel list. It may have already been removed.", p_item->get_name()));
 		return;
 	}
 
