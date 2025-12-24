@@ -224,10 +224,16 @@ Button *EditorBottomPanel::add_item(String p_text, Control *p_item, const Ref<Sh
 
 void EditorBottomPanel::remove_item(Control *p_item) {
 	EditorDock *dock = _get_dock_from_control(p_item);
-	ERR_FAIL_NULL_MSG(dock, vformat("Cannot remove unknown dock \"%s\" from the bottom panel.", p_item->get_name()));
+	if (!dock) {
+		WARN_PRINT(vformat("Cannot remove unknown dock \"%s\" from the bottom panel. It may have already been removed.", p_item->get_name()));
+		return;
+	}
 
 	int item_idx = bottom_docks.find(dock);
-	ERR_FAIL_COND(item_idx == -1);
+	if (item_idx == -1) {
+		WARN_PRINT(vformat("Dock \"%s\" not found in bottom panel list. It may have already been removed.", p_item->get_name()));
+		return;
+	}
 
 	bottom_docks.remove_at(item_idx);
 
