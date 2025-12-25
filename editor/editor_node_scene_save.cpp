@@ -45,6 +45,7 @@
 #include "editor/file_system/editor_paths.h"
 #include "editor/inspector/editor_resource_preview.h"
 #include "editor/settings/editor_settings.h"
+#include "editor/gui/editor_file_dialog.h"
 #include "editor/gui/editor_toaster.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/inspector/editor_preview_plugins.h"
@@ -536,6 +537,28 @@ void EditorNode::_mark_unsaved_scenes() {
 
 	_update_title();
 	scene_tabs->update_scene_tabs();
+}
+
+void EditorNode::save_before_run() {
+	current_menu_option = SAVE_AND_RUN;
+	_menu_option_confirm(SCENE_SAVE_AS_SCENE, true);
+	file->set_title(TTR("Save scene before running..."));
+}
+
+void EditorNode::try_autosave() {
+	if (!bool(EDITOR_GET("run/auto_save/save_before_running"))) {
+		return;
+	}
+
+	if (unsaved_cache) {
+		Node *scene = editor_data.get_edited_scene_root();
+
+		if (scene && !scene->get_scene_file_path().is_empty()) { // Only autosave if there is a scene and if it has a path.
+			_save_scene_with_preview(scene->get_scene_file_path());
+		}
+	}
+	_menu_option(SCENE_SAVE_ALL_SCENES);
+	editor_data.save_editor_external_data();
 }
 
 bool EditorNode::_is_scene_unsaved(int p_idx) {
