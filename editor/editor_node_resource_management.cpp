@@ -47,6 +47,9 @@
 #include "editor/gui/editor_toaster.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/main/node.h"
+#include "scene/main/scene_tree.h"
+#include "scene/resources/3d/world_3d.h"
+#include "scene/resources/environment.h"
 
 constexpr int LARGE_RESOURCE_WARNING_SIZE_THRESHOLD = 512'000; // 500 KB
 
@@ -340,4 +343,14 @@ bool EditorNode::is_resource_read_only(Ref<Resource> p_resource, bool p_foreign_
 	}
 
 	return false;
+}
+
+void EditorNode::save_default_environment() {
+	Ref<Environment> fallback = get_tree()->get_root()->get_world_3d()->get_fallback_environment();
+
+	if (fallback.is_valid() && fallback->get_path().is_resource_file()) {
+		HashMap<Ref<Resource>, bool> processed;
+		_find_and_save_edited_subresources(fallback.ptr(), processed, 0);
+		save_resource_in_path(fallback, fallback->get_path());
+	}
 }

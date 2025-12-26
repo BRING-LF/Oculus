@@ -37,11 +37,17 @@
 #include "editor_node.h"
 
 #include "core/os/os.h"
+#include "core/os/thread.h"
+#include "core/object/object.h"
+#include "editor/editor_interface.h"
 #include "editor/editor_log.h"
+#include "editor/editor_string_names.h"
+#include "editor/gui/progress_dialog.h"
 #include "servers/display/display_server.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/button.h"
 #include "scene/gui/rich_text_label.h"
+#include "scene/main/window.h"
 
 void EditorNode::_dialog_display_save_error(String p_file, Error p_error) {
 	if (p_error) {
@@ -130,5 +136,51 @@ void EditorNode::show_warning(const String &p_text, const String &p_title) {
 
 void EditorNode::_copy_warning(const String &p_str) {
 	DisplayServer::get_singleton()->clipboard_set(warning->get_text());
+}
+
+void EditorNode::add_io_error(const String &p_error) {
+	DEV_ASSERT(Thread::get_caller_id() == Thread::get_main_id());
+	singleton->load_errors->add_image(singleton->theme->get_icon(SNAME("Error"), EditorStringName(EditorIcons)));
+	singleton->load_errors->add_text(p_error + "\n");
+	// When a progress dialog is displayed, we will wait for it ot close before displaying
+	// the io errors to prevent the io popup to set it's parent to the progress dialog.
+	if (singleton->progress_dialog->is_visible()) {
+		singleton->load_errors_queued_to_display = true;
+	} else {
+		Window *window = Object::cast_to<Window>(singleton->load_error_dialog);
+		if (window) {
+			EditorInterface::get_singleton()->popup_dialog_centered_ratio(window, 0.5);
+		}
+	}
+}
+
+void EditorNode::add_io_warning(const String &p_warning) {
+	DEV_ASSERT(Thread::get_caller_id() == Thread::get_main_id());
+	singleton->load_errors->add_image(singleton->theme->get_icon(SNAME("Warning"), EditorStringName(EditorIcons)));
+	singleton->load_errors->add_text(p_warning + "\n");
+	// When a progress dialog is displayed, we will wait for it ot close before displaying
+	// the io errors to prevent the io popup to set it's parent to the progress dialog.
+	if (singleton->progress_dialog->is_visible()) {
+		singleton->load_errors_queued_to_display = true;
+	} else {
+		Window *window = Object::cast_to<Window>(singleton->load_error_dialog);
+		if (window) {
+			EditorInterface::get_singleton()->popup_dialog_centered_ratio(window, 0.5);
+		}
+	}
+}
+
+void EditorNode::_load_error_dialog_visibility_changed() {
+	if (!load_error_dialog->is_visible()) {
+		load_errors->clear();
+	}
+}
+
+void EditorNode::_file_access_close_error_notify(const String &p_str) {
+	callable_mp_static(&EditorNode::_file_access_close_error_notify_impl).call_deferred(p_str);
+}
+
+void EditorNode::_file_access_close_error_notify_impl(const String &p_str) {
+	add_io_error(vformat(TTR("Unable to write to file '%s', file in use, locked or lacking permissions."), p_str));
 }
 
