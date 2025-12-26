@@ -37,6 +37,7 @@
 #include "editor_node.h"
 
 #include "core/string/translation_server.h"
+#include "editor/settings/editor_settings.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 
@@ -60,6 +61,35 @@ void EditorNode::_update_translations() {
 			_translation_resources_changed();
 		}
 	}
+}
+
+String EditorNode::get_preview_locale() const {
+	const Ref<TranslationDomain> &main_domain = TranslationServer::get_singleton()->get_main_domain();
+	return main_domain->is_enabled() ? main_domain->get_locale_override() : String();
+}
+
+void EditorNode::set_preview_locale(const String &p_locale) {
+	const String &prev_locale = get_preview_locale();
+	if (prev_locale == p_locale) {
+		return;
+	}
+
+	// Texts set in the editor could be identifiers that should never be translated.
+	// So we need to disable translation entirely.
+	Ref<TranslationDomain> main_domain = TranslationServer::get_singleton()->get_main_domain();
+	if (p_locale.is_empty()) {
+		// Disable preview. Use the fallback locale.
+		main_domain->set_enabled(false);
+		main_domain->set_locale_override(TranslationServer::get_singleton()->get_fallback_locale());
+	} else {
+		// Preview a specific locale.
+		main_domain->set_enabled(true);
+		main_domain->set_locale_override(p_locale);
+	}
+
+	EditorSettings::get_singleton()->set_project_metadata("editor_metadata", "preview_locale", p_locale);
+
+	_translation_resources_changed();
 }
 
 void EditorNode::_translation_resources_changed() {
