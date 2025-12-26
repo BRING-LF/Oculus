@@ -60,8 +60,6 @@
 #include "scene/main/viewport.h"
 #include "scene/resources/packed_scene.h"
 
-constexpr int LARGE_RESOURCE_WARNING_SIZE_THRESHOLD = 512'000; // 500 KB
-
 static void _reset_animation_mixers(Node *p_node, List<Pair<AnimationMixer *, Ref<AnimatedValuesBackup>>> *r_anim_backups) {
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		AnimationMixer *mixer = Object::cast_to<AnimationMixer>(p_node->get_child(i));

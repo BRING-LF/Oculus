@@ -50,6 +50,7 @@
 #include "editor/settings/editor_folding.h"
 #include "editor/editor_main_screen.h"
 #include "editor/editor_undo_redo_manager.h"
+#include "editor/run/editor_run_bar.h"
 #include "editor/scene/editor_scene_tabs.h"
 #include "editor/script/script_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
@@ -1192,6 +1193,59 @@ void EditorNode::_remove_all_not_owned_children(Node *p_node, Node *p_owner) {
 	for (Node *node : nodes_to_remove) {
 		node->get_parent()->remove_child(node);
 		node->queue_free();
+	}
+}
+
+bool EditorNode::_is_closing_editor() const {
+	return tab_closing_menu_option == SCENE_QUIT || tab_closing_menu_option == PROJECT_QUIT_TO_PROJECT_MANAGER || tab_closing_menu_option == PROJECT_RELOAD_CURRENT_PROJECT;
+}
+
+void EditorNode::_discard_changes(const String &p_str) {
+	switch (current_menu_option) {
+		case SCENE_CLOSE:
+		case SCENE_TAB_CLOSE: {
+			Node *scene = editor_data.get_edited_scene_root(tab_closing_idx);
+			if (scene != nullptr) {
+				_update_prev_closed_scenes(scene->get_scene_file_path(), true);
+			}
+
+			// Don't close tabs when exiting the editor (required for "restore_scenes_on_load" setting).
+			if (!_is_closing_editor()) {
+				_remove_scene(tab_closing_idx);
+				scene_tabs->update_scene_tabs();
+			}
+			_proceed_closing_scene_tabs();
+		} break;
+		case SCENE_RELOAD_SAVED_SCENE: {
+			Node *scene = get_edited_scene();
+
+			String scene_filename = scene->get_scene_file_path();
+
+			int cur_idx = editor_data.get_edited_scene();
+
+			_remove_edited_scene();
+
+			Error err = load_scene(scene_filename);
+			if (err != OK) {
+				ERR_PRINT("Failed to load scene");
+			}
+			editor_data.move_edited_scene_to_index(cur_idx);
+			EditorUndoRedoManager::get_singleton()->clear_history(editor_data.get_current_edited_scene_history_id(), false);
+			scene_tabs->set_current_tab(cur_idx);
+
+			confirmation->hide();
+		} break;
+		case SCENE_QUIT: {
+			project_run_bar->stop_playing();
+			_exit_editor(EXIT_SUCCESS);
+
+		} break;
+		case PROJECT_QUIT_TO_PROJECT_MANAGER: {
+			_restart_editor(true);
+		} break;
+		case PROJECT_RELOAD_CURRENT_PROJECT: {
+			_restart_editor();
+		} break;
 	}
 }
 

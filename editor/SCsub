@@ -70,7 +70,14 @@ if env.editor_build:
             env.Run(editor_builders.make_translations),
         )
 
-    env.add_source_files(env.editor_sources, "*.cpp")
+    # Add all .cpp files except original_editor_node.cpp (backup file)
+    cpp_files = env.Glob("*.cpp")
+    cpp_files = [f for f in cpp_files if "original_editor_node" not in str(f)]
+    for f in cpp_files:
+        obj = env.Object(f)
+        if obj not in env.editor_sources:
+            env.editor_sources.append(obj)
+    
     env.add_source_files(env.editor_sources, gen_exporters)
     env.add_source_files(env.editor_sources, translation_targets.keys())
 

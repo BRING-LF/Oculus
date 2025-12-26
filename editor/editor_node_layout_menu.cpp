@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_layout_menu.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,80 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
+#include "core/error/error_macros.h"
+#include "core/io/config_file.h"
+#include "core/string/translation_server.h"
+#include "editor/docks/editor_dock_manager.h"
+#include "editor/settings/editor_layouts_dialog.h"
 #include "editor/settings/editor_settings.h"
+#include "scene/gui/popup_menu.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
+void EditorNode::_update_layouts_menu() {
+	editor_layouts->clear();
+	overridden_default_layout = -1;
 
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
+	editor_layouts->reset_size();
+	editor_layouts->add_shortcut(ED_SHORTCUT("layout/save", TTRC("Save Layout...")), LAYOUT_SAVE);
+	editor_layouts->add_shortcut(ED_SHORTCUT("layout/delete", TTRC("Delete Layout...")), LAYOUT_DELETE);
+	editor_layouts->add_separator();
+	editor_layouts->add_shortcut(ED_SHORTCUT("layout/default", TTRC("Default")), LAYOUT_DEFAULT);
 
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
+	Ref<ConfigFile> config;
+	config.instantiate();
+	Error err = config->load(EditorSettings::get_singleton()->get_editor_layouts_config());
+	if (err != OK) {
+		return; // No config.
+	}
 
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
+	Vector<String> layouts = config->get_sections();
+	const String default_layout_name = TTR("Default");
 
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
+	for (const String &layout : layouts) {
+		if (layout.contains_char('/')) {
+			continue;
+		}
 
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
+		if (layout == default_layout_name) {
+			editor_layouts->remove_item(editor_layouts->get_item_index(LAYOUT_DEFAULT));
+			overridden_default_layout = editor_layouts->get_item_count();
+		}
 
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+		editor_layouts->add_item(layout);
+		editor_layouts->set_item_auto_translate_mode(-1, AUTO_TRANSLATE_MODE_DISABLED);
 	}
 }
-#endif
+
+void EditorNode::_layout_menu_option(int p_id) {
+	switch (p_id) {
+		case LAYOUT_SAVE: {
+			current_menu_option = p_id;
+			layout_dialog->set_title(TTR("Save Layout"));
+			layout_dialog->set_ok_button_text(TTR("Save"));
+			layout_dialog->set_name_line_enabled(true);
+			layout_dialog->popup_centered();
+		} break;
+		case LAYOUT_DELETE: {
+			current_menu_option = p_id;
+			layout_dialog->set_title(TTR("Delete Layout"));
+			layout_dialog->set_ok_button_text(TTR("Delete"));
+			layout_dialog->set_name_line_enabled(false);
+			layout_dialog->popup_centered();
+		} break;
+		case LAYOUT_DEFAULT: {
+			editor_dock_manager->load_docks_from_config(default_layout, "docks");
+			_save_editor_layout();
+		} break;
+		default: {
+			Ref<ConfigFile> config;
+			config.instantiate();
+			Error err = config->load(EditorSettings::get_singleton()->get_editor_layouts_config());
+			if (err != OK) {
+				return; // No config.
+			}
+
+			editor_dock_manager->load_docks_from_config(config, editor_layouts->get_item_text(p_id));
+			_save_editor_layout();
+		}
+	}
+}
+

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_undo_redo.cpp                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,38 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "editor/editor_undo_redo_manager.h"
+#include "scene/gui/popup_menu.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
+void EditorNode::undo() {
+	_menu_option_confirm(SCENE_UNDO, true);
 }
 
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
+void EditorNode::redo() {
+	_menu_option_confirm(SCENE_REDO, true);
 }
 
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
+void EditorNode::_update_undo_redo_allowed() {
+	if (!file_menu) {
+		return;
+	}
 
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
+	EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
+	if (!undo_redo) {
+		return;
+	}
 
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
+	bool has_undo = undo_redo->has_undo();
+	bool has_redo = undo_redo->has_redo();
 
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
+	int undo_idx = file_menu->get_item_index(SCENE_UNDO);
+	int redo_idx = file_menu->get_item_index(SCENE_REDO);
 
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+	if (undo_idx >= 0) {
+		file_menu->set_item_disabled(undo_idx, !has_undo);
+	}
+	if (redo_idx >= 0) {
+		file_menu->set_item_disabled(redo_idx, !has_redo);
 	}
 }
-#endif
+

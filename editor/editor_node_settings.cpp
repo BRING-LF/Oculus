@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_settings.cpp                                             */
+/*  editor_node_settings.cpp                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -37,15 +37,32 @@
 #include "editor_node.h"
 
 #include "core/config/project_settings.h"
-#include "core/io/resource_loader.h"
 #include "core/string/translation_server.h"
 #include "editor/import/resource_importer_texture.h"
+#include "editor/settings/editor_settings_dialog.h"
+#include "editor/settings/project_settings_editor.h"
 #include "scene/gui/control.h"
 #include "scene/main/scene_tree.h"
 #include "scene/main/viewport.h"
 #include "servers/navigation_2d/navigation_server_2d.h"
 #include "servers/navigation_3d/navigation_server_3d.h"
 #include "servers/rendering/rendering_server.h"
+
+void EditorNode::open_setting_override(const String &p_property) {
+	editor_settings_dialog->hide();
+	project_settings_editor->popup_for_override(p_property);
+}
+
+void EditorNode::notify_settings_overrides_changed() {
+	settings_overrides_changed = true;
+}
+
+HashMap<String, Variant> EditorNode::get_initial_settings() {
+	HashMap<String, Variant> settings;
+	settings["physics/3d/physics_engine"] = "Jolt Physics";
+	settings["rendering/rendering_device/driver.windows"] = "d3d12";
+	return settings;
+}
 
 void EditorNode::_update_from_settings() {
 	if (!is_inside_tree()) {
@@ -173,4 +190,3 @@ void EditorNode::_update_from_settings() {
 	NavigationServer3D::get_singleton()->set_debug_navigation_enable_geometry_face_random_color(GLOBAL_GET("debug/shapes/navigation/3d/enable_geometry_face_random_color"));
 #endif // DEBUG_ENABLED
 }
-

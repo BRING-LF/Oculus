@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_editor_script.cpp                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,43 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/object/class_db.h"
+#include "core/object/script_language.h"
+#include "editor/gui/editor_toaster.h"
+#include "editor/script/editor_script.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
-
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
-
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
-
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
-
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
-
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+void EditorNode::run_editor_script(const Ref<Script> &p_script) {
+	Error err = p_script->reload(true); // Always hard reload the script before running.
+	if (err != OK || !p_script->is_valid()) {
+		EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it contains errors, check the output log."), EditorToaster::SEVERITY_WARNING);
+		return;
 	}
+
+	// Perform additional checks on the script to evaluate if it's runnable.
+
+	bool is_runnable = true;
+	if (!ClassDB::is_parent_class(p_script->get_instance_base_type(), "EditorScript")) {
+		is_runnable = false;
+
+		EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it doesn't extend EditorScript."), EditorToaster::SEVERITY_WARNING);
+	}
+	if (!p_script->is_tool()) {
+		is_runnable = false;
+
+		if (p_script->get_class() == "GDScript") {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script (add the @tool annotation at the top)."), EditorToaster::SEVERITY_WARNING);
+		} else if (p_script->get_class() == "CSharpScript") {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script (add the [Tool] attribute above the class definition)."), EditorToaster::SEVERITY_WARNING);
+		} else {
+			EditorToaster::get_singleton()->popup_str(TTR("Cannot run the script because it's not a tool script."), EditorToaster::SEVERITY_WARNING);
+		}
+	}
+	if (!is_runnable) {
+		return;
+	}
+
+	Ref<EditorScript> es = memnew(EditorScript);
+	es->set_script(p_script);
+	es->run();
 }
-#endif
+

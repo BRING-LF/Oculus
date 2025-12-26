@@ -91,47 +91,37 @@ void EditorNode::_dialog_display_load_error(String p_file, Error p_error) {
 }
 
 void EditorNode::show_accept(const String &p_text, const String &p_title) {
-	if (!accept) {
-		accept = memnew(AcceptDialog);
-		accept->set_flag(Window::FLAG_POPUP, false);
-		gui_base->add_child(accept);
-		accept->connect(SceneStringName(confirmed), callable_mp(this, &EditorNode::_close_messages));
-		accept->connect("canceled", callable_mp(this, &EditorNode::_close_messages));
+	current_menu_option = -1;
+	if (accept) {
+		_close_save_scene_progress();
+		accept->set_ok_button_text(p_title);
+		accept->set_text(p_text);
+		accept->reset_size();
+		EditorInterface::get_singleton()->popup_dialog_centered_clamped(accept, Size2i(), 0.0);
 	}
-
-	accept->set_title(p_title);
-	accept->set_text(p_text);
-	accept->popup_centered();
 }
 
 void EditorNode::show_save_accept(const String &p_text, const String &p_title) {
-	if (!save_accept) {
-		save_accept = memnew(AcceptDialog);
-		save_accept->set_flag(Window::FLAG_POPUP, false);
-		gui_base->add_child(save_accept);
-		save_accept->connect(SceneStringName(confirmed), callable_mp(this, &EditorNode::_close_messages));
-		save_accept->connect("canceled", callable_mp(this, &EditorNode::_close_messages));
+	current_menu_option = -1;
+	if (save_accept) {
+		_close_save_scene_progress();
+		save_accept->set_ok_button_text(p_title);
+		save_accept->set_text(p_text);
+		save_accept->reset_size();
+		EditorInterface::get_singleton()->popup_dialog_centered_clamped(save_accept, Size2i(), 0.0);
 	}
-
-	save_accept->set_title(p_title);
-	save_accept->set_text(p_text);
-	save_accept->popup_centered();
 }
 
 void EditorNode::show_warning(const String &p_text, const String &p_title) {
-	if (!warning) {
-		warning = memnew(AcceptDialog);
-		warning->set_flag(Window::FLAG_POPUP, false);
-		gui_base->add_child(warning);
-		warning->set_title(TTR("Warning!"));
-		warning->add_button(TTR("Copy"), true, "copy");
-		warning->connect(SceneStringName(confirmed), callable_mp(this, &EditorNode::_close_messages));
-		warning->connect("custom_action", callable_mp(this, &EditorNode::_copy_warning));
+	if (warning) {
+		_close_save_scene_progress();
+		warning->set_text(p_text);
+		warning->set_title(p_title);
+		warning->reset_size();
+		EditorInterface::get_singleton()->popup_dialog_centered_clamped(warning, Size2i(), 0.0);
+	} else {
+		WARN_PRINT(p_title + " " + p_text);
 	}
-
-	warning->set_title(p_title);
-	warning->set_text(p_text);
-	warning->popup_centered();
 }
 
 void EditorNode::_copy_warning(const String &p_str) {
@@ -147,10 +137,7 @@ void EditorNode::add_io_error(const String &p_error) {
 	if (singleton->progress_dialog->is_visible()) {
 		singleton->load_errors_queued_to_display = true;
 	} else {
-		Window *window = Object::cast_to<Window>(singleton->load_error_dialog);
-		if (window) {
-			EditorInterface::get_singleton()->popup_dialog_centered_ratio(window, 0.5);
-		}
+		EditorInterface::get_singleton()->popup_dialog_centered_ratio(singleton->load_error_dialog, 0.5);
 	}
 }
 
@@ -163,10 +150,7 @@ void EditorNode::add_io_warning(const String &p_warning) {
 	if (singleton->progress_dialog->is_visible()) {
 		singleton->load_errors_queued_to_display = true;
 	} else {
-		Window *window = Object::cast_to<Window>(singleton->load_error_dialog);
-		if (window) {
-			EditorInterface::get_singleton()->popup_dialog_centered_ratio(window, 0.5);
-		}
+		EditorInterface::get_singleton()->popup_dialog_centered_ratio(singleton->load_error_dialog, 0.5);
 	}
 }
 
@@ -182,5 +166,11 @@ void EditorNode::_file_access_close_error_notify(const String &p_str) {
 
 void EditorNode::_file_access_close_error_notify_impl(const String &p_str) {
 	add_io_error(vformat(TTR("Unable to write to file '%s', file in use, locked or lacking permissions."), p_str));
+}
+
+void EditorNode::_prepare_save_confirmation_popup() {
+	if (save_confirmation->get_window() != get_last_exclusive_window()) {
+		save_confirmation->reparent(get_last_exclusive_window());
+	}
 }
 

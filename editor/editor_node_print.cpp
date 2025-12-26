@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_print.cpp                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,27 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/os/thread.h"
+#include "editor/editor_log.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
-
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
-
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
-
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
-
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
-
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+void EditorNode::_print_handler(void *p_this, const String &p_string, bool p_error, bool p_rich) {
+	if (!Thread::is_main_thread()) {
+		callable_mp_static(&EditorNode::_print_handler_impl).call_deferred(p_string, p_error, p_rich);
+	} else {
+		_print_handler_impl(p_string, p_error, p_rich);
 	}
 }
-#endif
+
+void EditorNode::_print_handler_impl(const String &p_string, bool p_error, bool p_rich) {
+	if (!singleton) {
+		return;
+	}
+	if (p_error) {
+		singleton->log->add_message(p_string, EditorLog::MSG_TYPE_ERROR);
+	} else if (p_rich) {
+		singleton->log->add_message(p_string, EditorLog::MSG_TYPE_STD_RICH);
+	} else {
+		singleton->log->add_message(p_string, EditorLog::MSG_TYPE_STD);
+	}
+}
+

@@ -111,10 +111,7 @@ void EditorNode::progress_end_task_bg(const String &p_task) {
 void EditorNode::_progress_dialog_visibility_changed() {
 	// Open the io errors after the progress dialog is closed.
 	if (load_errors_queued_to_display && !progress_dialog->is_visible()) {
-		Window *window = Object::cast_to<Window>(singleton->load_error_dialog);
-		if (window) {
-			EditorInterface::get_singleton()->popup_dialog_centered_ratio(window, 0.5);
-		}
+		EditorInterface::get_singleton()->popup_dialog_centered_ratio(singleton->load_error_dialog, 0.5);
 		load_errors_queued_to_display = false;
 	}
 }

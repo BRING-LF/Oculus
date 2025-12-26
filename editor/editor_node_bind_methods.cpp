@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_bind_methods.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,29 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/object/class_db.h"
+#include "core/io/resource.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
+void EditorNode::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("push_item", "object", "property", "inspector_only"), &EditorNode::push_item, DEFVAL(""), DEFVAL(false));
+
+	ClassDB::bind_method("set_edited_scene", &EditorNode::set_edited_scene);
+
+	ClassDB::bind_method("stop_child_process", &EditorNode::stop_child_process);
+
+	ClassDB::bind_method(D_METHOD("update_node_reference", "value", "node", "remove"), &EditorNode::update_node_reference, DEFVAL(false));
+
+	ADD_SIGNAL(MethodInfo("request_help_search"));
+	ADD_SIGNAL(MethodInfo("script_add_function_request", PropertyInfo(Variant::OBJECT, "obj"), PropertyInfo(Variant::STRING, "function"), PropertyInfo(Variant::PACKED_STRING_ARRAY, "args")));
+	ADD_SIGNAL(MethodInfo("resource_saved", PropertyInfo(Variant::OBJECT, "obj")));
+	ADD_SIGNAL(MethodInfo("scene_saved", PropertyInfo(Variant::STRING, "path")));
+	ADD_SIGNAL(MethodInfo("scene_changed"));
+	ADD_SIGNAL(MethodInfo("scene_closed", PropertyInfo(Variant::STRING, "path")));
+	ADD_SIGNAL(MethodInfo("preview_locale_changed"));
+	ADD_SIGNAL(MethodInfo("resource_counter_changed"));
 }
 
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
+Node *_resource_get_edited_scene() {
+	return EditorNode::get_singleton()->get_edited_scene();
 }
 
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
-
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
-
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
-
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
-	}
-}
-#endif

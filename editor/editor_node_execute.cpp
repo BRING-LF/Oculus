@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_execute.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,73 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/os/os.h"
+#include "editor/editor_interface.h"
+#include "main/main.h"
+#include "scene/gui/dialogs.h"
+#include "scene/gui/rich_text_label.h"
+#include "servers/display/display_server.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
-
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
-
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
-
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
-
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
-
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+static void _execute_thread(void *p_ud) {
+	EditorNode::ExecuteThreadArgs *eta = (EditorNode::ExecuteThreadArgs *)p_ud;
+	Error err = OS::get_singleton()->execute(eta->path, eta->args, &eta->output, &eta->exitcode, true, &eta->execute_output_mutex);
+	print_verbose("Thread exit status: " + itos(eta->exitcode));
+	if (err != OK) {
+		eta->exitcode = err;
 	}
+
+	eta->done.set();
 }
-#endif
+
+int EditorNode::execute_and_show_output(const String &p_title, const String &p_path, const List<String> &p_arguments, bool p_close_on_ok, bool p_close_on_errors, String *r_output) {
+	if (execute_output_dialog) {
+		execute_output_dialog->set_title(p_title);
+		execute_output_dialog->get_ok_button()->set_disabled(true);
+		execute_outputs->clear();
+		execute_outputs->set_scroll_follow(true);
+		EditorInterface::get_singleton()->popup_dialog_centered_ratio(execute_output_dialog);
+	}
+
+	ExecuteThreadArgs eta;
+	eta.path = p_path;
+	eta.args = p_arguments;
+	eta.exitcode = 255;
+
+	int prev_len = 0;
+
+	eta.execute_output_thread.start(_execute_thread, &eta);
+
+	while (!eta.done.is_set()) {
+		{
+			MutexLock lock(eta.execute_output_mutex);
+			if (prev_len != eta.output.length()) {
+				String to_add = eta.output.substr(prev_len);
+				prev_len = eta.output.length();
+				execute_outputs->add_text(to_add);
+				DisplayServer::get_singleton()->process_events(); // Get rid of pending events.
+				Main::iteration();
+			}
+		}
+		OS::get_singleton()->delay_usec(1000);
+	}
+
+	eta.execute_output_thread.wait_to_finish();
+	execute_outputs->add_text("\nExit Code: " + itos(eta.exitcode));
+
+	if (execute_output_dialog) {
+		if (p_close_on_errors && eta.exitcode != 0) {
+			execute_output_dialog->hide();
+		}
+		if (p_close_on_ok && eta.exitcode == 0) {
+			execute_output_dialog->hide();
+		}
+
+		execute_output_dialog->get_ok_button()->set_disabled(false);
+	}
+
+	if (r_output) {
+		*r_output = eta.output;
+	}
+	return eta.exitcode;
+}
+

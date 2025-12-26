@@ -105,7 +105,7 @@ void EditorNode::unload_editor_addons() {
 }
 
 void EditorNode::restart_editor(bool p_goto_project_manager) {
-	_restart_editor(p_goto_project_manager);
+	_menu_option_confirm(p_goto_project_manager ? PROJECT_QUIT_TO_PROJECT_MANAGER : PROJECT_RELOAD_CURRENT_PROJECT, false);
 }
 
 void EditorNode::_restart_editor(bool p_goto_project_manager) {

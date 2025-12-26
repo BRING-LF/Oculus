@@ -960,3 +960,21 @@ void EditorNode::_export_as_menu_option(int p_idx) {
 	}
 }
 
+void EditorNode::_update_file_menu_opened() {
+	bool has_unsaved = false;
+	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
+		if (_is_scene_unsaved(i)) {
+			has_unsaved = true;
+			break;
+		}
+	}
+	if (has_unsaved) {
+		file_menu->set_item_disabled(file_menu->get_item_index(SCENE_SAVE_ALL_SCENES), false);
+		file_menu->set_item_tooltip(file_menu->get_item_index(SCENE_SAVE_ALL_SCENES), String());
+	} else {
+		file_menu->set_item_disabled(file_menu->get_item_index(SCENE_SAVE_ALL_SCENES), true);
+		file_menu->set_item_tooltip(file_menu->get_item_index(SCENE_SAVE_ALL_SCENES), TTR("All scenes are already saved."));
+	}
+	_update_undo_redo_allowed();
+}
+

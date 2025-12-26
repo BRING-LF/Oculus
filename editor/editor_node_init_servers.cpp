@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_init_servers.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,47 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/input/input.h"
+#include "core/object/script_language.h"
+#include "core/os/os.h"
+#include "servers/audio/audio_server.h"
+#include "servers/display/display_server.h"
+#include "servers/navigation_3d/navigation_server_3d.h"
+#include "servers/rendering/rendering_server.h"
+#include "servers/physics_2d/physics_server_2d.h"
+#include "servers/physics_3d/physics_server_3d.h"
+#include "scene/resources/portable_compressed_texture.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
+void EditorNode::_init_servers() {
+	PortableCompressedTexture2D::set_keep_all_compressed_buffers(true);
+	RenderingServer::get_singleton()->set_debug_generate_wireframes(true);
 
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
+	AudioServer::get_singleton()->set_enable_tagging_used_audio_streams(true);
 
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
+	// No navigation by default if in editor.
+	if (NavigationServer3D::get_singleton()->get_debug_enabled()) {
+		NavigationServer3D::get_singleton()->set_active(true);
+	} else {
+		NavigationServer3D::get_singleton()->set_active(false);
+	}
 
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
+	// No physics by default if in editor.
+#ifndef PHYSICS_3D_DISABLED
+	PhysicsServer3D::get_singleton()->set_active(false);
+#endif // PHYSICS_3D_DISABLED
+#ifndef PHYSICS_2D_DISABLED
+	PhysicsServer2D::get_singleton()->set_active(false);
+#endif // PHYSICS_2D_DISABLED
 
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
+	// No scripting by default if in editor (except for tool).
+	ScriptServer::set_scripting_enabled(false);
 
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+	if (!DisplayServer::get_singleton()->is_touchscreen_available()) {
+		// Only if no touchscreen ui hint, disable emulation just in case.
+		Input::get_singleton()->set_emulate_touch_from_mouse(false);
+	}
+	if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_CUSTOM_CURSOR_SHAPE)) {
+		DisplayServer::get_singleton()->cursor_set_custom_image(Ref<Resource>());
 	}
 }
-#endif
+

@@ -51,8 +51,6 @@
 #include "scene/resources/3d/world_3d.h"
 #include "scene/resources/environment.h"
 
-constexpr int LARGE_RESOURCE_WARNING_SIZE_THRESHOLD = 512'000; // 500 KB
-
 void EditorNode::edit_resource(const Ref<Resource> &p_resource) {
 	InspectorDock::get_singleton()->edit_resource(p_resource);
 }

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_ui_helpers.cpp                                            */
+/*  editor_node_main_scene.cpp                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,56 +36,67 @@
 
 #include "editor_node.h"
 
-#include "editor/gui/editor_bottom_panel.h"
-#include "editor/settings/editor_settings.h"
+#include "core/config/project_settings.h"
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
+#include "core/io/resource_loader.h"
+#include "core/os/os.h"
+#include "core/string/translation_server.h"
+#include "scene/gui/button.h"
+#include "scene/gui/dialogs.h"
 
-void EditorNode::set_center_split_offset(int p_offset) {
-	center_split->set_split_offset(p_offset);
-}
+bool EditorNode::ensure_main_scene(bool p_from_native) {
+	pick_main_scene->set_meta("from_native", p_from_native); // Whether from play button or native run.
+	String main_scene = GLOBAL_GET("application/run/main_scene");
 
-void EditorNode::dim_editor(bool p_dimming) {
-	dimmed = p_dimming;
-	gui_base->set_modulate(p_dimming ? Color(0.5, 0.5, 0.5) : Color(1, 1, 1));
-}
+	if (main_scene.is_empty()) {
+		current_menu_option = -1;
+		pick_main_scene->set_text(TTR("No main scene has ever been defined. Select one?\nYou can change it later in \"Project Settings\" under the 'application' category."));
+		pick_main_scene->popup_centered();
 
-bool EditorNode::is_editor_dimmed() const {
-	return dimmed;
-}
+		if (editor_data.get_edited_scene_root()) {
+			select_current_scene_button->set_disabled(false);
+			select_current_scene_button->grab_focus();
+		} else {
+			select_current_scene_button->set_disabled(true);
+		}
 
-void EditorNode::set_unfocused_low_processor_usage_mode_enabled(bool p_enabled) {
-	unfocused_low_processor_usage_mode_enabled = p_enabled;
-}
-
-void EditorNode::_bottom_panel_resized() {
-	bottom_panel->set_bottom_panel_offset(center_split->get_split_offset());
-}
-
-#ifdef ANDROID_ENABLED
-#include "editor/gui/touch_actions_panel.h"
-
-void EditorNode::_touch_actions_panel_mode_changed() {
-	int panel_mode = EDITOR_GET("interface/touchscreen/touch_actions_panel");
-	switch (panel_mode) {
-		case 1:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			main_hbox->call_deferred("add_child", touch_actions_panel);
-			break;
-		case 2:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-			}
-			touch_actions_panel = memnew(TouchActionsPanel);
-			call_deferred("add_child", touch_actions_panel);
-			break;
-		case 0:
-			if (touch_actions_panel != nullptr) {
-				touch_actions_panel->queue_free();
-				touch_actions_panel = nullptr;
-			}
-			break;
+		return false;
 	}
+
+	if (!FileAccess::exists(main_scene)) {
+		current_menu_option = -1;
+		pick_main_scene->set_text(vformat(TTR("Selected scene '%s' does not exist. Select a valid one?\nYou can change it later in \"Project Settings\" under the 'application' category."), main_scene));
+		pick_main_scene->popup_centered();
+		return false;
+	}
+
+	if (ResourceLoader::get_resource_type(main_scene) != "PackedScene") {
+		current_menu_option = -1;
+		pick_main_scene->set_text(vformat(TTR("Selected scene '%s' is not a scene file. Select a valid one?\nYou can change it later in \"Project Settings\" under the 'application' category."), main_scene));
+		pick_main_scene->popup_centered();
+		return false;
+	}
+
+	return true;
 }
-#endif
+
+bool EditorNode::validate_custom_directory() {
+	bool use_custom_dir = GLOBAL_GET("application/config/use_custom_user_dir");
+
+	if (use_custom_dir) {
+		String data_dir = OS::get_singleton()->get_user_data_dir();
+		Ref<DirAccess> dir = DirAccess::create(DirAccess::ACCESS_USERDATA);
+		if (dir->change_dir(data_dir) != OK) {
+			dir->make_dir_recursive(data_dir);
+			if (dir->change_dir(data_dir) != OK) {
+				open_project_settings->set_text(vformat(TTR("User data dir '%s' is not valid. Change to a valid one?"), data_dir));
+				open_project_settings->popup_centered();
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+

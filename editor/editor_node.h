@@ -106,6 +106,9 @@ class ProjectUpgradeTool;
 class TouchActionsPanel;
 #endif
 
+// Large resource warning threshold (500 KB).
+inline constexpr int LARGE_RESOURCE_WARNING_SIZE_THRESHOLD = 512'000;
+
 struct EditorProgress {
 	String task;
 	bool force_background = false;
@@ -617,6 +620,8 @@ private:
 	void _dropped_files(const Vector<String> &p_files);
 	void _add_dropped_files_recursive(const Vector<String> &p_files, String to_path);
 
+	void _init_servers();
+	void _init_connections();
 	void _update_vsync_mode();
 	void _update_from_settings();
 	void _gdextensions_reloaded();
