@@ -1357,30 +1357,6 @@ int EditorNode::_next_unsaved_scene(bool p_valid_filename, int p_start) {
 	return -1;
 }
 
-void EditorNode::_exit_editor(int p_exit_code) {
-	exiting = true;
-	waiting_for_first_scan = false;
-	resource_preview->stop(); // Stop early to avoid crashes.
-	_save_editor_layout();
-
-	// Dim the editor window while it's quitting to make it clearer that it's busy.
-	dim_editor(true);
-
-	// Unload addons before quitting to allow cleanup.
-	unload_editor_addons();
-
-	get_tree()->quit(p_exit_code);
-}
-
-void EditorNode::unload_editor_addons() {
-	for (const KeyValue<String, EditorPlugin *> &E : addon_name_to_plugin) {
-		print_verbose(vformat("Unloading addon: %s", E.key));
-		remove_editor_plugin(E.value, false);
-		memdelete(E.value);
-	}
-
-	addon_name_to_plugin.clear();
-}
 
 void EditorNode::_discard_changes(const String &p_str) {
 	switch (current_menu_option) {
@@ -1727,29 +1703,6 @@ void EditorNode::_quick_opened(const String &p_file_path) {
 	load_scene_or_resource(p_file_path);
 }
 
-void EditorNode::_project_run_started() {
-	if (bool(EDITOR_GET("run/output/always_clear_output_on_play"))) {
-		log->clear();
-	}
-
-	int action_on_play = EDITOR_GET("run/bottom_panel/action_on_play");
-	if (action_on_play == ACTION_ON_PLAY_OPEN_OUTPUT) {
-		editor_dock_manager->focus_dock(log);
-	} else if (action_on_play == ACTION_ON_PLAY_OPEN_DEBUGGER) {
-		editor_dock_manager->focus_dock(EditorDebuggerNode::get_singleton());
-	}
-}
-
-void EditorNode::_project_run_stopped() {
-	int action_on_stop = EDITOR_GET("run/bottom_panel/action_on_stop");
-	if (action_on_stop == ACTION_ON_STOP_CLOSE_BUTTOM_PANEL) {
-		bottom_panel->hide_bottom_panel();
-	}
-}
-
-void EditorNode::notify_all_debug_sessions_exited() {
-	project_run_bar->stop_playing();
-}
 
 void EditorNode::add_io_error(const String &p_error) {
 	DEV_ASSERT(Thread::get_caller_id() == Thread::get_main_id());
@@ -1812,13 +1765,6 @@ bool EditorNode::is_scene_in_use(const String &p_path) {
 	return false;
 }
 
-OS::ProcessID EditorNode::has_child_process(OS::ProcessID p_pid) const {
-	return project_run_bar->has_child_process(p_pid);
-}
-
-void EditorNode::stop_child_process(OS::ProcessID p_pid) {
-	project_run_bar->stop_child_process(p_pid);
-}
 
 
 
@@ -2204,56 +2150,6 @@ bool EditorNode::_is_closing_editor() const {
 	return tab_closing_menu_option == SCENE_QUIT || tab_closing_menu_option == PROJECT_QUIT_TO_PROJECT_MANAGER || tab_closing_menu_option == PROJECT_RELOAD_CURRENT_PROJECT;
 }
 
-void EditorNode::restart_editor(bool p_goto_project_manager) {
-	_restart_editor(p_goto_project_manager);
-}
-
-void EditorNode::_restart_editor(bool p_goto_project_manager) {
-	exiting = true;
-
-	if (project_run_bar->is_playing()) {
-		project_run_bar->stop_playing();
-	}
-
-	String to_reopen;
-	if (!p_goto_project_manager && get_tree()->get_edited_scene_root()) {
-		to_reopen = get_tree()->get_edited_scene_root()->get_scene_file_path();
-	}
-
-	_exit_editor(EXIT_SUCCESS);
-
-	List<String> args;
-	for (const String &a : Main::get_forwardable_cli_arguments(Main::CLI_SCOPE_TOOL)) {
-		args.push_back(a);
-	}
-
-	if (p_goto_project_manager) {
-		args.push_back("--project-manager");
-
-		// Setup working directory.
-		const String exec_dir = OS::get_singleton()->get_executable_path().get_base_dir();
-		if (!exec_dir.is_empty()) {
-			args.push_back("--path");
-			args.push_back(exec_dir);
-		}
-	} else {
-		args.push_back("--path");
-		args.push_back(ProjectSettings::get_singleton()->get_resource_path());
-
-		args.push_back("-e");
-	}
-
-	if (!to_reopen.is_empty()) {
-		args.push_back(to_reopen);
-	}
-
-	OS::get_singleton()->set_restart_on_exit(true, args);
-}
-
-
-void EditorNode::_cancel_confirmation() {
-	stop_project_confirmation = false;
-}
 
 void EditorNode::_prepare_save_confirmation_popup() {
 	if (save_confirmation->get_window() != get_last_exclusive_window()) {
