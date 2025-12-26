@@ -596,28 +596,16 @@ EditorNode::EditorNode() {
 
 	_init_servers();
 
-	SceneState::set_disable_placeholders(true);
-	ResourceLoader::clear_translation_remaps(); // Using no remaps if in editor.
-	ResourceLoader::set_create_missing_resources_if_class_unavailable(true);
-
-	EditorPropertyNameProcessor *epnp = memnew(EditorPropertyNameProcessor);
-	add_child(epnp);
+	_init_resources();
 
 	_init_connections();
-
-	Ref<TranslationDomain> domain = TranslationServer::get_singleton()->get_main_domain();
-	domain->set_enabled(false);
-	domain->set_locale_override(TranslationServer::get_singleton()->get_fallback_locale());
 
 	// Load settings.
 	if (!EditorSettings::get_singleton()) {
 		EditorSettings::create();
 	}
 
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+	_init_shortcuts();
 
 	FileAccess::set_backup_save(EDITOR_GET("filesystem/on_save/safe_save_on_backup_then_rename"));
 

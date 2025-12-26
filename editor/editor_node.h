@@ -622,6 +622,8 @@ private:
 
 	void _init_servers();
 	void _init_connections();
+	void _init_resources();
+	void _init_shortcuts();
 	void _update_vsync_mode();
 	void _update_from_settings();
 	void _gdextensions_reloaded();
