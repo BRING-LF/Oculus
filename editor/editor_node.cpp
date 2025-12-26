@@ -1381,60 +1381,6 @@ void EditorNode::_prepare_save_confirmation_popup() {
 	}
 }
 
-void EditorNode::_toggle_distraction_free_mode() {
-	if (EDITOR_GET("interface/editor/separate_distraction_mode")) {
-		int screen = editor_main_screen->get_selected_index();
-
-		if (screen == EditorMainScreen::EDITOR_SCRIPT) {
-			script_distraction_free = !script_distraction_free;
-			set_distraction_free_mode(script_distraction_free);
-		} else {
-			scene_distraction_free = !scene_distraction_free;
-			set_distraction_free_mode(scene_distraction_free);
-		}
-	} else {
-		set_distraction_free_mode(distraction_free->is_pressed());
-	}
-}
-
-void EditorNode::update_distraction_free_mode() {
-	if (!EDITOR_GET("interface/editor/separate_distraction_mode")) {
-		return;
-	}
-	int screen = editor_main_screen->get_selected_index();
-	if (screen == EditorMainScreen::EDITOR_SCRIPT) {
-		set_distraction_free_mode(script_distraction_free);
-	} else {
-		set_distraction_free_mode(scene_distraction_free);
-	}
-}
-
-void EditorNode::set_distraction_free_mode(bool p_enter) {
-	distraction_free->set_pressed(p_enter);
-
-	if (p_enter) {
-		if (editor_dock_manager->are_docks_visible()) {
-			editor_dock_manager->set_docks_visible(false);
-		}
-	} else {
-		editor_dock_manager->set_docks_visible(true);
-	}
-}
-
-bool EditorNode::is_distraction_free_mode_enabled() const {
-	return distraction_free->is_pressed();
-}
-
-void EditorNode::update_distraction_free_button_theme() {
-	if (distraction_free->get_meta("_scene_tabs_owned", true)) {
-		distraction_free->set_theme_type_variation("FlatMenuButton");
-		distraction_free->add_theme_style_override(SceneStringName(pressed), theme->get_stylebox(CoreStringName(normal), "FlatMenuButton"));
-	} else {
-		distraction_free->set_theme_type_variation("BottomPanelButton");
-		distraction_free->remove_theme_style_override(SceneStringName(pressed));
-	}
-}
-
 void EditorNode::set_center_split_offset(int p_offset) {
 	center_split->set_split_offset(p_offset);
 }
