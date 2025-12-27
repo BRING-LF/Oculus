@@ -8,9 +8,15 @@ header = """\
 /*  $filename                                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
+/*                             OCULUS ENGINE                             */
+/*                        https://oculusengine.org                        */
 /**************************************************************************/
+/* Copyright (c) 2025-present Oculus Engine contributors (see AUTHORS.md). */
+/*                                                                        */
+/* This file was originally derived from Godot Engine:                   */
+/* https://github.com/godotengine/godot/tree/63227bbc8ae5300319f14f8253c8158b846f355b */
+/*                                                                        */
+/* Original Godot Engine copyright:                                      */
 /* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
 /* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
 /*                                                                        */
@@ -29,7 +35,7 @@ header = """\
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
 /* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
@@ -41,6 +47,13 @@ if len(sys.argv) < 2:
 
 for f in sys.argv[1:]:
     fname = f
+
+    # First, check if file already has OCULUS ENGINE copyright header
+    with open(fname.strip(), "r", encoding="utf-8") as check_file:
+        file_content_check = check_file.read()
+        if "OCULUS ENGINE" in file_content_check and "oculusengine.org" in file_content_check:
+            # File already has Oculus copyright, skip modification
+            continue
 
     # Handle replacing $filename with actual filename and keep alignment
     fsingle = os.path.basename(fname.strip())
@@ -69,26 +82,29 @@ for f in sys.argv[1:]:
     # then we can append the rest (step 2).
 
     with open(fname.strip(), "r", encoding="utf-8") as fileread:
-        line = fileread.readline()
+        file_content = fileread.read()
+        
+        lines = file_content.split('\n')
+        line_idx = 0
         header_done = False
 
-        while line.strip() == "" and line != "":  # Skip empty lines at the top
-            line = fileread.readline()
+        while line_idx < len(lines) and lines[line_idx].strip() == "":  # Skip empty lines at the top
+            line_idx += 1
 
-        if line.find("/**********") == -1:  # Godot header starts this way
-            # Maybe starting with a non-Godot comment, abort header magic
+        if line_idx >= len(lines) or lines[line_idx].find("/**********") == -1:  # Header starts this way (Godot or Oculus)
+            # Maybe starting with a non-standard comment, abort header magic
             header_done = True
 
-        while not header_done:  # Handle header now
-            if line.find("/*") != 0:  # No more starting with a comment
+        while not header_done and line_idx < len(lines):  # Handle header now
+            if lines[line_idx].find("/*") != 0:  # No more starting with a comment
                 header_done = True
-                if line.strip() != "":
-                    text += line
-            line = fileread.readline()
+                if lines[line_idx].strip() != "":
+                    text += lines[line_idx] + "\n"
+            line_idx += 1
 
-        while line != "":  # Dump everything until EOF
-            text += line
-            line = fileread.readline()
+        while line_idx < len(lines):  # Dump everything until EOF
+            text += lines[line_idx] + "\n"
+            line_idx += 1
 
     # Write
     with open(fname.strip(), "w", encoding="utf-8", newline="\n") as filewrite:

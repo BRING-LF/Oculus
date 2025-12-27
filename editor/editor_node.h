@@ -631,6 +631,7 @@ private:
 	void _init_export();
 	void _init_file_extensions();
 	void _init_preview();
+	void _init_gui_base();
 	void _init_dock();
 	void _init_timers();
 	void _init_editor_shortcuts();
@@ -762,6 +763,19 @@ protected:
 
 	static void _bind_methods();
 	void _notification(int p_what);
+
+	// Notification handlers split from _notification() for better organization.
+	void _notification_translation_changed();
+	void _notification_postinitialize();
+	void _notification_process();
+	void _notification_enter_tree();
+	void _notification_exit_tree();
+	void _notification_ready();
+	void _notification_application_focus_in();
+	void _notification_application_focus_out();
+	void _notification_wm_about();
+	void _notification_wm_close_request();
+	void _notification_editor_settings_changed();
 
 public:
 	// Public for use with callable_mp.
