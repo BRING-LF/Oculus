@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_file_system.cpp                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,23 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
-#include "editor/settings/editor_settings.h"
+#include "editor/editor_data.h"
+#include "editor/file_system/editor_file_system.h"
+#include "editor/inspector/editor_context_menu_plugin.h"
+#include "scene/gui/file_dialog.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+void EditorNode::_init_file_system() {
+	editor_selection = memnew(EditorSelection);
+
+	EditorFileSystem *efs = memnew(EditorFileSystem);
+	add_child(efs);
+
+	EditorContextMenuPluginManager::create();
+
+	// Used for previews.
+	FileDialog::set_get_icon_callback(callable_mp_static(_file_dialog_get_icon));
+	FileDialog::set_get_thumbnail_callback(callable_mp_static(_file_dialog_get_thumbnail));
+	FileDialog::register_func = _file_dialog_register;
+	FileDialog::unregister_func = _file_dialog_unregister;
 }
 

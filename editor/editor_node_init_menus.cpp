@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_menus.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,59 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
+#include "editor/gui/editor_title_bar.h"
 #include "editor/settings/editor_settings.h"
+#include "servers/display/display_server.h"
+#include "scene/gui/popup_menu.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+#ifdef MACOS_ENABLED
+#include "platform/macos/native_menu.h"
+#endif
+
+void EditorNode::_init_menus() {
+	// Editor menu and toolbar.
+	bool can_expand = bool(EDITOR_GET("interface/editor/expand_to_title")) && DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_EXTEND_TO_TITLE);
+
+#ifdef MACOS_ENABLED
+	if (NativeMenu::get_singleton()->has_system_menu(NativeMenu::APPLICATION_MENU_ID)) {
+		apple_menu = memnew(PopupMenu);
+		apple_menu->set_system_menu(NativeMenu::APPLICATION_MENU_ID);
+		_add_to_main_menu("", apple_menu);
+
+		apple_menu->add_shortcut(ED_GET_SHORTCUT("editor/editor_settings"), EDITOR_OPEN_SETTINGS);
+		apple_menu->add_separator();
+		apple_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
+	}
+#endif
+
+	if (can_expand) {
+		// Add spacer to avoid other controls under window minimize/maximize/close buttons (left side).
+		left_menu_spacer = memnew(Control);
+		left_menu_spacer->set_mouse_filter(Control::MOUSE_FILTER_PASS);
+		title_bar->add_child(left_menu_spacer);
+	}
+
+	file_menu = memnew(PopupMenu);
+	file_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
+	file_menu->connect("about_to_popup", callable_mp(this, &EditorNode::_update_file_menu_opened));
+	_add_to_main_menu(TTRC("Scene"), file_menu);
+
+	project_menu = memnew(PopupMenu);
+	project_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
+	_add_to_main_menu(TTRC("Project"), project_menu);
+
+	debug_menu = memnew(PopupMenu);
+	// Options are added and handled by DebuggerEditorPlugin, do not rebuild.
+	_add_to_main_menu(TTRC("Debug"), debug_menu);
+
+	settings_menu = memnew(PopupMenu);
+	settings_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
+	_add_to_main_menu(TTRC("Editor"), settings_menu);
+
+	help_menu = memnew(PopupMenu);
+	help_menu->connect(SceneStringName(id_pressed), callable_mp(this, &EditorNode::_menu_option));
+	_add_to_main_menu(TTRC("Help"), help_menu);
+
+	_update_main_menu_type();
 }
 

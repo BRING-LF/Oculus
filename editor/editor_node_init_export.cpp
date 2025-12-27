@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_export.cpp                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,24 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
+#include "editor/editor_string_names.h"
+#include "editor/export/editor_export.h"
+#include "editor/export/register_exporters.h"
 #include "editor/settings/editor_settings.h"
+#include "editor/themes/editor_theme_manager.h"
+#include "servers/display/display_server.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+void EditorNode::_init_export() {
+	editor_export = memnew(EditorExport);
+	add_child(editor_export);
+
+	// Exporters might need the theme.
+	EditorThemeManager::initialize();
+	theme = EditorThemeManager::generate_theme();
+	DisplayServer::set_early_window_clear_color_override(true, theme->get_color(SNAME("background"), EditorStringName(Editor)));
+
+	EDITOR_DEF("_export_preset_advanced_mode", false); // Could be accessed in EditorExportPreset.
+
+	register_exporters();
 }
 

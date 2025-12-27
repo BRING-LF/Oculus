@@ -39,7 +39,7 @@
 #include "core/io/resource_loader.h"
 #include "core/string/translation_server.h"
 #include "editor/inspector/editor_property_name_processor.h"
-#include "scene/resources/scene_state.h"
+#include "scene/resources/packed_scene.h"
 
 void EditorNode::_init_resources() {
 	SceneState::set_disable_placeholders(true);

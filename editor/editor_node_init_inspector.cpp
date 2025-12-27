@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_inspector.cpp                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,27 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
-#include "editor/settings/editor_settings.h"
+#include "editor/inspector/editor_inspector.h"
+#include "editor/inspector/editor_properties.h"
+#include "editor/scene/3d/root_motion_editor_plugin.h"
+#include "editor/scene/particle_process_material_editor_plugin.h"
+#include "editor/shader/visual_shader_editor_plugin.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+void EditorNode::_init_inspector_plugins() {
+	Ref<EditorInspectorDefaultPlugin> eidp;
+	eidp.instantiate();
+	EditorInspector::add_inspector_plugin(eidp);
+
+	Ref<EditorInspectorRootMotionPlugin> rmp;
+	rmp.instantiate();
+	EditorInspector::add_inspector_plugin(rmp);
+
+	Ref<EditorInspectorVisualShaderModePlugin> smp;
+	smp.instantiate();
+	EditorInspector::add_inspector_plugin(smp);
+
+	Ref<EditorInspectorParticleProcessMaterialPlugin> ppm;
+	ppm.instantiate();
+	EditorInspector::add_inspector_plugin(ppm);
 }
 

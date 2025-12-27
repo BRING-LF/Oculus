@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_docks.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,41 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
-#include "editor/settings/editor_settings.h"
+#include "editor/docks/filesystem_dock.h"
+#include "editor/docks/groups_dock.h"
+#include "editor/docks/history_dock.h"
+#include "editor/docks/import_dock.h"
+#include "editor/docks/inspector_dock.h"
+#include "editor/docks/scene_tree_dock.h"
+#include "editor/docks/signals_dock.h"
+#include "editor/settings/project_settings_editor.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+void EditorNode::_init_docks() {
+	// Instantiate and place editor docks.
+
+	memnew(SceneTreeDock(scene_root, editor_selection, editor_data));
+	editor_dock_manager->add_dock(SceneTreeDock::get_singleton());
+
+	memnew(ImportDock);
+	editor_dock_manager->add_dock(ImportDock::get_singleton());
+
+	FileSystemDock *filesystem_dock = memnew(FileSystemDock);
+	filesystem_dock->connect("inherit", callable_mp(this, &EditorNode::_inherit_request));
+	filesystem_dock->connect("instantiate", callable_mp(this, &EditorNode::_instantiate_request));
+	filesystem_dock->connect("display_mode_changed", callable_mp(this, &EditorNode::_save_editor_layout));
+	get_project_settings()->connect_filesystem_dock_signals(filesystem_dock);
+	editor_dock_manager->add_dock(filesystem_dock);
+
+	memnew(InspectorDock(editor_data));
+	editor_dock_manager->add_dock(InspectorDock::get_singleton());
+
+	memnew(SignalsDock);
+	editor_dock_manager->add_dock(SignalsDock::get_singleton());
+
+	memnew(GroupsDock);
+	editor_dock_manager->add_dock(GroupsDock::get_singleton());
+
+	history_dock = memnew(HistoryDock);
+	editor_dock_manager->add_dock(history_dock);
 }
 

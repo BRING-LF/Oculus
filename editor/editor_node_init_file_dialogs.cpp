@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_file_dialogs.cpp                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,41 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
-#include "editor/settings/editor_settings.h"
+#include "core/string/translation_server.h"
+#include "editor/gui/editor_file_dialog.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+void EditorNode::_init_file_dialogs() {
+	file_templates = memnew(EditorFileDialog);
+	file_templates->set_title(TTR("Import Templates From ZIP File"));
+
+	gui_base->add_child(file_templates);
+	file_templates->set_file_mode(EditorFileDialog::FILE_MODE_OPEN_FILE);
+	file_templates->set_access(EditorFileDialog::ACCESS_FILESYSTEM);
+	file_templates->clear_filters();
+	file_templates->add_filter("*.tpz", TTR("Template Package"));
+
+	file = memnew(EditorFileDialog);
+	gui_base->add_child(file);
+	file->set_current_dir("res://");
+	file->set_transient_to_focused(true);
+
+	file_export_lib = memnew(EditorFileDialog);
+	file_export_lib->set_title(TTR("Export Library"));
+	file_export_lib->set_file_mode(EditorFileDialog::FILE_MODE_SAVE_FILE);
+	file_export_lib->connect("file_selected", callable_mp(this, &EditorNode::_dialog_action));
+	file_export_lib->add_option(TTR("Merge With Existing"), Vector<String>(), true);
+	file_export_lib->add_option(TTR("Apply MeshInstance Transforms"), Vector<String>(), false);
+	gui_base->add_child(file_export_lib);
+
+	file_pack_zip = memnew(EditorFileDialog);
+	file_pack_zip->connect("file_selected", callable_mp(this, &EditorNode::_dialog_action));
+	file_pack_zip->set_file_mode(EditorFileDialog::FILE_MODE_SAVE_FILE);
+	file_pack_zip->set_access(EditorFileDialog::ACCESS_FILESYSTEM);
+	file_pack_zip->add_filter("*.zip", "ZIP Archive");
+	file_pack_zip->set_title(TTR("Pack Project as ZIP..."));
+	gui_base->add_child(file_pack_zip);
+
+	file->connect("file_selected", callable_mp(this, &EditorNode::_dialog_action));
+	file_templates->connect("file_selected", callable_mp(this, &EditorNode::_dialog_action));
 }
 

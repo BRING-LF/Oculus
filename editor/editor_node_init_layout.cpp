@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_node_init_shortcuts.cpp                                        */
+/*  editor_node_init_layout.cpp                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             OCULUS ENGINE                             */
@@ -36,13 +36,57 @@
 
 #include "editor_node.h"
 
-#include "core/os/keyboard.h"
+#include "editor/docks/editor_dock_manager.h"
+#include "editor/editor_log.h"
+#include "editor/gui/editor_bottom_panel.h"
 #include "editor/settings/editor_settings.h"
+#include "scene/gui/split_container.h"
 
-void EditorNode::_init_shortcuts() {
-	ED_SHORTCUT("editor/lock_selected_nodes", TTRC("Lock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::L);
-	ED_SHORTCUT("editor/unlock_selected_nodes", TTRC("Unlock Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::L);
-	ED_SHORTCUT("editor/group_selected_nodes", TTRC("Group Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | Key::G);
-	ED_SHORTCUT("editor/ungroup_selected_nodes", TTRC("Ungroup Selected Node(s)"), KeyModifierMask::CMD_OR_CTRL | KeyModifierMask::SHIFT | Key::G);
+static const String EDITOR_NODE_CONFIG_SECTION = "EditorNode";
+
+void EditorNode::_init_layout() {
+	// Add some offsets to make LEFT_R and RIGHT_L docks wider than minsize.
+	const int dock_hsize = 280;
+	// By default there is only 3 visible, so set 2 split offsets for them.
+	const int dock_hsize_scaled = dock_hsize * EDSCALE;
+	main_hsplit->set_split_offsets({ dock_hsize_scaled, -dock_hsize_scaled });
+
+	// Define corresponding default layout.
+
+	const String docks_section = "docks";
+	default_layout.instantiate();
+	// Dock numbers are based on DockSlot enum value + 1.
+	default_layout->set_value(docks_section, "dock_3", "Scene,Import");
+	default_layout->set_value(docks_section, "dock_4", "FileSystem,History");
+	default_layout->set_value(docks_section, "dock_5", "Inspector,Signals,Groups");
+
+	int hsplits[] = { 0, dock_hsize, -dock_hsize, 0 };
+	for (int i = 0; i < (int)std_size(hsplits); i++) {
+		default_layout->set_value(docks_section, "dock_hsplit_" + itos(i + 1), hsplits[i]);
+	}
+	for (int i = 0; i < editor_dock_manager->get_vsplit_count(); i++) {
+		default_layout->set_value(docks_section, "dock_split_" + itos(i + 1), 0);
+	}
+
+	{
+		Dictionary offsets;
+		offsets["Audio"] = -450;
+		default_layout->set_value(EDITOR_NODE_CONFIG_SECTION, "bottom_panel_offsets", offsets);
+	}
+
+	_update_layouts_menu();
+
+	// Bottom panels.
+
+	bottom_panel = memnew(EditorBottomPanel);
+	editor_dock_manager->register_dock_slot(DockConstants::DOCK_SLOT_BOTTOM, bottom_panel, DockConstants::DOCK_LAYOUT_HORIZONTAL);
+	bottom_panel->set_theme_type_variation("BottomPanel");
+	center_split->add_child(bottom_panel);
+	center_split->set_dragger_visibility(SplitContainer::DRAGGER_HIDDEN);
+
+	log = memnew(EditorLog);
+	editor_dock_manager->add_dock(log);
+
+	center_split->connect(SceneStringName(resized), callable_mp(this, &EditorNode::_vp_resized));
 }
 
