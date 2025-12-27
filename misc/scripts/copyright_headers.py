@@ -83,15 +83,17 @@ for f in sys.argv[1:]:
 
     with open(fname.strip(), "r", encoding="utf-8") as fileread:
         file_content = fileread.read()
-        
-        lines = file_content.split('\n')
+
+        lines = file_content.split("\n")
         line_idx = 0
         header_done = False
 
         while line_idx < len(lines) and lines[line_idx].strip() == "":  # Skip empty lines at the top
             line_idx += 1
 
-        if line_idx >= len(lines) or lines[line_idx].find("/**********") == -1:  # Header starts this way (Godot or Oculus)
+        if (
+            line_idx >= len(lines) or lines[line_idx].find("/**********") == -1
+        ):  # Header starts this way (Godot or Oculus)
             # Maybe starting with a non-standard comment, abort header magic
             header_done = True
 
